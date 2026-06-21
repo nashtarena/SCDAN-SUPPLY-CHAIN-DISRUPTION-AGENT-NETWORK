@@ -20,5 +20,13 @@ class Settings(BaseSettings):
 
     CACHE_TTL_SECONDS: int = 900  # 15 min minimum, per spec
 
+    WATCHED_REGIONS: list[str] = [
+        "Shanghai,CN",
+        "Rotterdam,NL",
+        "Los Angeles,US",
+        "Singapore,SG",
+        "Mumbai,IN",
+    ]
+
 
 settings = Settings()
