@@ -7,10 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 from app.models.base import TimestampMixin, UUIDPk
-
-if TYPE_CHECKING:
-    from app.models.user import User
-
+from app.models.user import User
 
 class SupplyChain(Base, TimestampMixin):
     __tablename__ = "supply_chains"
