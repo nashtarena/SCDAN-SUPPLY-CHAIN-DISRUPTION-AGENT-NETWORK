@@ -4,8 +4,10 @@ import time
 from app.agents.ingestion.disaster_agent import fetch_disaster_signals
 from app.agents.ingestion.news_agent import fetch_news_signals
 from app.agents.ingestion.weather_agent import fetch_weather_signals
+from app.agents.risk_analysis_agent import classify_disruptions
 from app.core.logging import logger
 from app.schemas.disruption import DisruptionSignal
+from app.schemas.risk import ClassifiedDisruption
 
 
 async def run_ingestion_phase() -> list[DisruptionSignal]:
@@ -46,17 +48,27 @@ async def run_ingestion_phase() -> list[DisruptionSignal]:
 
 async def run_scan_pipeline() -> dict:
     """
-    Entry point for a full scan. Currently runs the ingestion phase only;
-    analysis/mapper/reroute phases plug in here in later modules without
-    changing this function's external contract.
+    Entry point for a full scan. Runs ingestion, then risk analysis.
+    Mapper/reroute phases plug in here in later modules without changing
+    this function's external contract.
     """
     ingestion_start = time.perf_counter()
     signals = await run_ingestion_phase()
     ingestion_elapsed = time.perf_counter() - ingestion_start
 
+    analysis_start = time.perf_counter()
+    classifications: list[ClassifiedDisruption] = await classify_disruptions(signals)
+    analysis_elapsed = time.perf_counter() - analysis_start
+    logger.info(
+        f"Orchestrator: analysis phase complete in {analysis_elapsed:.2f}s, "
+        f"{len(classifications)} classification(s)."
+    )
+
     return {
         "signals": signals,
+        "classifications": classifications,
         "timing": {
             "ingestion_seconds": round(ingestion_elapsed, 2),
+            "analysis_seconds": round(analysis_elapsed, 2),
         },
     }
