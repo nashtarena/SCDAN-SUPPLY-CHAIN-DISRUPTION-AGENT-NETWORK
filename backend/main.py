@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, supply_chains, scan, alerts
+from app.api.routes import auth, supply_chains, scan, alerts, analytics
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.logging import logger
@@ -23,6 +23,7 @@ app.include_router(auth.router)
 app.include_router(supply_chains.router)
 app.include_router(scan.router)
 app.include_router(alerts.router)
+app.include_router(analytics.router)
 
 
 @app.on_event("startup")

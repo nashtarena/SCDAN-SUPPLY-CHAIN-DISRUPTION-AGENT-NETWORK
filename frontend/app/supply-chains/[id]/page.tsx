@@ -1,31 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/useRequireAuth";
-import type {
-  Alert,
-  ScanResult,
-  SupplyChainDetail,
-  SupplyChainEdge,
-  SupplyChainNode,
-} from "@/lib/types";
+import type { Alert, ScanResult, SupplyChainDetail, SupplyChainEdge, SupplyChainNode } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import ScanStatus from "@/components/ScanStatus";
-import AlertFeed from "@/components/AlertFeed";
-import AddNodeForm from "@/components/AddNodeForm";
-import dynamic from "next/dynamic";
+import GraphTab from "@/components/GraphTab";
+import AnalyticsTab from "@/components/analytics/AnalyticsTab";
 
-// ReactFlow must be client-only (uses browser APIs).
-const SupplyChainGraph = dynamic(() => import("@/components/SupplyChainGraph"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-gray-500">
-      Loading graph…
-    </div>
-  ),
-});
+type Tab = "graph" | "analytics";
 
 const ALERT_POLL_MS = 5_000;
 const SCAN_POLL_MS  = 3_000;
@@ -38,6 +23,7 @@ export default function SupplyChainPage() {
   const [alerts, setAlerts]           = useState<Alert[]>([]);
   const [scan, setScan]               = useState<ScanResult | null>(null);
   const [scanning, setScanning]       = useState(false);
+  const [tab, setTab]                 = useState<Tab>("graph");
   const [pageError, setPageError]     = useState<string | null>(null);
 
   const scanPollRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -47,8 +33,11 @@ export default function SupplyChainPage() {
     if (!ready || !id) return;
     loadSupplyChain();
     loadAlerts();
-    startAlertPolling();
-    return () => stopPolling();
+    alertPollRef.current = setInterval(loadAlerts, ALERT_POLL_MS);
+    return () => {
+      if (alertPollRef.current) clearInterval(alertPollRef.current);
+      if (scanPollRef.current)  clearInterval(scanPollRef.current);
+    };
   }, [ready, id]);
 
   async function loadSupplyChain() {
@@ -64,18 +53,7 @@ export default function SupplyChainPage() {
     try {
       const res = await api.get<Alert[]>(`/api/alerts/${id}`);
       setAlerts(res.data);
-    } catch {
-      // Non-fatal.
-    }
-  }
-
-  function startAlertPolling() {
-    if (alertPollRef.current) clearInterval(alertPollRef.current);
-    alertPollRef.current = setInterval(loadAlerts, ALERT_POLL_MS);
-  }
-
-  function stopAlertPolling() {
-    if (alertPollRef.current) clearInterval(alertPollRef.current);
+    } catch {}
   }
 
   function startScanPolling(scanId: string) {
@@ -96,19 +74,12 @@ export default function SupplyChainPage() {
     }, SCAN_POLL_MS);
   }
 
-  function stopPolling() {
-    stopAlertPolling();
-    if (scanPollRef.current) clearInterval(scanPollRef.current);
-  }
-
   async function handleRunScan() {
     if (!id || scanning) return;
     setScanning(true);
     setScan(null);
     try {
-      const res = await api.post<{ scan_result_id: string }>("/api/scans", {
-        supply_chain_id: id,
-      });
+      const res = await api.post<{ scan_result_id: string }>("/api/scans", { supply_chain_id: id });
       const scanRes = await api.get<ScanResult>(`/api/scans/${res.data.scan_result_id}`);
       setScan(scanRes.data);
       startScanPolling(res.data.scan_result_id);
@@ -150,49 +121,47 @@ export default function SupplyChainPage() {
     );
   }
 
+  const tabCls = (t: Tab) =>
+    `px-4 py-2 text-sm font-medium border-b-2 transition ${
+      tab === t
+        ? "border-primary text-white"
+        : "border-transparent text-gray-400 hover:text-white"
+    }`;
+
   return (
-    // BUG FIX: h-screen (not min-h-screen) so flex-1 children get real pixel
-    // heights. React Flow's h-full needs a concrete ancestor height to render.
     <div className="flex h-screen flex-col bg-background">
       <Navbar />
 
       {/* header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border bg-surface px-6 py-3">
-        <div>
-          <h1 className="font-semibold text-white">{supplyChain.name}</h1>
-          {supplyChain.description && (
-            <p className="text-xs text-gray-400">{supplyChain.description}</p>
-          )}
-        </div>
-        <ScanStatus scan={scan} onRunScan={handleRunScan} scanning={scanning} />
-      </div>
-
-      {/* body: graph + sidebar — flex-1 so they fill remaining screen height */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* graph */}
-        <div className="flex-1">
-          {/* ReactFlow BUG FIX: needs an explicit pixel height on its direct
-              wrapper, not just h-full, because "full" won't resolve when the
-              ancestor is a flex container with dynamic height. We use 100% of
-              the flex-1 parent via a positioned fill pattern. */}
-          <div className="relative h-full w-full">
-            <SupplyChainGraph supplyChain={supplyChain} alerts={alerts} />
+      <div className="shrink-0 border-b border-border bg-surface px-6 pt-3">
+        <div className="flex items-center justify-between pb-2">
+          <div>
+            <h1 className="font-semibold text-white">{supplyChain.name}</h1>
+            {supplyChain.description && (
+              <p className="text-xs text-gray-400">{supplyChain.description}</p>
+            )}
           </div>
+          <ScanStatus scan={scan} onRunScan={handleRunScan} scanning={scanning} />
         </div>
 
-        {/* sidebar */}
-        <div className="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border p-3">
-          <AddNodeForm
-            supplyChainId={id}
-            nodes={supplyChain.nodes}
-            onNodeAdded={handleNodeAdded}
-            onEdgeAdded={handleEdgeAdded}
-          />
-          <div className="flex-1 overflow-hidden">
-            <AlertFeed alerts={alerts} />
-          </div>
+        {/* tab bar sits flush with the header bottom border */}
+        <div className="flex gap-0">
+          <button className={tabCls("graph")}     onClick={() => setTab("graph")}>Graph</button>
+          <button className={tabCls("analytics")} onClick={() => setTab("analytics")}>Analytics</button>
         </div>
       </div>
+
+      {/* body — graph tab needs overflow-hidden + full height; analytics is scrollable */}
+      {tab === "graph" ? (
+        <GraphTab
+          supplyChain={supplyChain}
+          alerts={alerts}
+          onNodeAdded={handleNodeAdded}
+          onEdgeAdded={handleEdgeAdded}
+        />
+      ) : (
+        <AnalyticsTab supplyChainId={id} />
+      )}
     </div>
   );
 }

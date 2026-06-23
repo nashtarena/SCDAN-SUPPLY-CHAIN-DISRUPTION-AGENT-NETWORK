@@ -61,3 +61,53 @@ export interface Alert {
   message: string;
   created_at: string;
 }
+
+// ── Analytics ──────────────────────────────────────────────────────────────
+
+export interface SeverityBreakdown {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+export interface ScanStatusBreakdown {
+  completed: number;
+  failed: number;
+  running: number;
+  pending: number;
+}
+
+export interface RegionStat {
+  region: string;
+  count: number;
+}
+
+export interface ScanHistoryEntry {
+  scan_id: string;
+  status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  alert_count: number;
+  timing: Record<string, number> | null;
+}
+
+export interface GlobalAnalytics {
+  total_alerts: number;
+  severity_breakdown: SeverityBreakdown;
+  scan_status_breakdown: ScanStatusBreakdown;
+  top_regions: RegionStat[];
+  total_supply_chains: number;
+}
+
+export interface ChainAnalytics {
+  total_alerts: number;
+  severity_breakdown: SeverityBreakdown;
+  top_regions: RegionStat[];
+  scan_history: ScanHistoryEntry[];
+}
+
+export interface ExecutiveSummary {
+  summary: string;
+  cached: boolean;
+}
