@@ -6,6 +6,7 @@ Real-time supply chain risk intelligence using concurrent AI agents, LLM reasoni
 
 ## Demo Video
 
+https://drive.google.com/file/d/1i10kqv6A5xaMz_yGCEz-NAx0PPvmK54C/view?usp=drive_link
 
 ---
 
