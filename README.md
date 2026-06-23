@@ -4,6 +4,17 @@ Real-time supply chain risk intelligence using concurrent AI agents, LLM reasoni
 
 ---
 
+## Demo Video
+
+
+---
+
+## Architecture Diagram
+
+![Architecture Diagram](image-1.png)
+
+---
+
 ## What it does
 
 1. User builds a supply chain graph (nodes + edges)
@@ -12,31 +23,6 @@ Real-time supply chain risk intelligence using concurrent AI agents, LLM reasoni
 4. LangChain + Groq classifies each signal, maps it to affected nodes, generates reroute suggestions
 5. Alerts appear live on the graph with severity coloring
 6. Analytics page shows trends + AI executive summary
-
----
-
-## Architecture
-
-```
-FastAPI  ──►  Celery (Redis)
-                  │
-        ┌─────────┴──────────┐
-        │                    │
-   Ingestion Layer      [Postgres]
-   ├─ news_agent
-   ├─ weather_agent
-   └─ disaster_agent
-        │
-   list[DisruptionSignal]
-        │
-   Risk Analysis Agent  (LangChain + ChatGroq)
-        │
-   Supply Chain Mapper  (LangChain + ChatGroq)
-        │
-   Reroute Agent        (LangChain + ChatGroq, parallel per node)
-        │
-   Alerts → Postgres ──► Next.js frontend (polling)
-```
 
 ---
 
